@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Infrastructure Diagram</title>
+    <!-- Include Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include vis-network for graph rendering -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Include jsPDF for Document Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Include FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            background-color: #e0f2fe;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #header {
+            background-color: #1e3a8a;
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        #mynetwork {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+            background-size: 20px 20px;
+            z-index: 1;
+            position: relative;
+        }
+
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        div.vis-tooltip {
+            background-color: #1f2937;
+            color: #f9fafb;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        #controls-panel {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 20;
+        }
+
+        #legend-panel {
+            position: absolute;
+            top: 5rem;
+            left: 2rem;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 20;
+            max-width: 250px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #4b5563;
+        }
+
+        .legend-icon {
+            width: 24px;
+            text-align: center;
+            margin-right: 0.75rem;
+            font-size: 1.2rem;
+        }
+
+        div.vis-network div.vis-manipulation {
+            border: none;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-radius: 0.5rem;
+            padding: 10px 15px;
+            top: 20px;
+            left: auto;
+            right: 20px;
+            width: auto;
+            font-family: 'Inter', sans-serif;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        div.vis-network div.vis-manipulation-button {
+            border-radius: 4px;
+            margin-right: 0;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <div id="header" class="flex justify-between items-center flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-bold flex items-center gap-2">
+                <i class="fa-solid fa-network-wired"></i>
+                Network Diagram Creator
+            </h1>
+            <p class="text-blue-200 text-sm mt-1">Interactive visualization of your specified components</p>
+        </div>
+        <div class="flex flex-wrap gap-2 items-center">
+            <button onclick="exportImage()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded shadow transition duration-200 ease-in-out flex items-center gap-2 text-sm">
+                <i class="fa-solid fa-image"></i> Save Image
+            </button>
+            <button onclick="exportPDF()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded shadow transition duration-200 ease-in-out flex items-center gap-2 text-sm">
+                <i class="fa-solid fa-file-pdf"></i> Export Doc
+            </button>
+            <button onclick="exportProject()" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded shadow transition duration-200 ease-in-out flex items-center gap-2 text-sm" title="Save layout and settings to edit later">
+                <i class="fa-solid fa-download"></i> Save Project
+            </button>
+            <label class="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded shadow transition duration-200 ease-in-out flex items-center gap-2 cursor-pointer inline-flex text-sm" title="Load a previously saved .json project">
+                <i class="fa-solid fa-upload"></i> Load Project
+                <input type="file" id="import-project" accept=".json" class="hidden">
+            </label>
+            <button id="reset-btn" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded shadow transition duration-200 ease-in-out flex items-center gap-2 text-sm">
+                <i class="fa-solid fa-compress"></i> Reset View
+            </button>
+            <label class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded shadow transition duration-200 ease-in-out flex items-center gap-2 cursor-pointer inline-flex text-sm">
+                <i class="fa-solid fa-file-import"></i> Import CSV
+                <input type="file" id="import-csv" accept=".csv" class="hidden">
+            </label>
+        </div>
+    </div>
+
+    <!-- Editable Center Name Overlay (Top Left of Canvas) -->
+    <div id="center-name-overlay" class="absolute left-6 z-10 pointer-events-auto" style="top: 110px;">
+        <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 ml-1 drop-shadow-sm"><i class="fa-solid fa-location-dot mr-1"></i> Site Name</div>
+        <h2 id="center-name-text" contenteditable="true" class="text-3xl font-extrabold text-gray-900 tracking-tight bg-white/80 px-4 py-2 rounded-lg border border-gray-300 shadow-lg backdrop-blur-md outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all cursor-text" spellcheck="false" title="Click to edit the center name">
+            Center Name
+        </h2>
+    </div>
+
+    <!-- Dynamic Background Canvas -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- The main container where vis-network will draw the diagram -->
+    <div id="mynetwork"></div>
+
+    <!-- Controls panel to toggle between Structured and Free-form layouts -->
+    <div id="controls-panel">
+        <h3 class="text-sm font-semibold mb-2 text-gray-800 border-b pb-1">Layout Mode</h3>
+        <div class="flex flex-col gap-2">
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" name="layout" value="hierarchical" checked onchange="changeLayout('hierarchical')" class="accent-blue-600">
+                Hierarchical
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" name="layout" value="free" onchange="changeLayout('free')" class="accent-blue-600">
+                Physics (Free)
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                <input type="radio" name="layout" value="manual" onchange="changeLayout('manual')" class="accent-blue-600">
+                Manual (Free Drag)
+            </label>
+        </div>
+    </div>
+
+    <!-- Modals for Drag and Drop Customization -->
+    <div id="node-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-lg p-6 w-96 shadow-xl border border-gray-200">
+            <h2 id="node-modal-title" class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-microchip mr-2"></i>Add Component</h2>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Device Name/Label</label>
+                <textarea id="node-label" rows="2" class="shadow-sm appearance-none border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Switch Floor 2"></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Device Type</label>
+                <select id="node-group" class="shadow-sm border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="wan">ISP / WAN Gateway</option>
+                    <option value="security">Firewall</option>
+                    <option value="routing">Router</option>
+                    <option value="switch_poe">POE Switch</option>
+                    <option value="switch_unmanaged">Unmanaged Switch</option>
+                    <option value="wireless">Wireless Access Point</option>
+                    <option value="endpoints">PC / Endpoint</option>
+                </select>
+            </div>
+            <div class="mb-6 grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Component Size</label>
+                    <input type="number" id="node-size" class="shadow-sm border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none" value="80" min="20" max="200">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Text Label Size</label>
+                    <input type="number" id="node-font-size" class="shadow-sm border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none" value="14" min="10" max="50">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="cancelNodeModal()" class="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded shadow-sm transition">Cancel</button>
+                <button onclick="saveNodeModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-sm transition">Save Component</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edge-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-lg p-6 w-96 shadow-xl border border-gray-200">
+            <h2 id="edge-modal-title" class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-link mr-2"></i>Connect Devices</h2>
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Connection Type/Label</label>
+                <input type="text" id="edge-label" class="shadow-sm appearance-none border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Fiber Uplink">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="cancelEdgeModal()" class="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded shadow-sm transition">Cancel</button>
+                <button onclick="saveEdgeModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow-sm transition">Save Connection</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var nodes = new vis.DataSet([
+            { id: 1, label: 'ISP 1 BSNL', group: 'wan', level: 0, icon: { face: '"Font Awesome 6 Free"', code: '\uf0ac', weight: 900, color: '#3b82f6', size: 80 } },
+            { id: 2, label: 'ISP 2 AIRTEL', group: 'wan', level: 0, icon: { face: '"Font Awesome 6 Free"', code: '\uf0ac', weight: 900, color: '#3b82f6', size: 80 } },
+            { id: 3, label: 'AIRTEL ILL 400 Mbps', group: 'routing', level: 1, icon: { face: '"Font Awesome 6 Free"', code: '\uf233', weight: 900, color: '#374151', size: 80 } },
+            { id: 4, label: 'BSNL 1 Gbps', group: 'routing', level: 1, icon: { face: '"Font Awesome 6 Free"', code: '\uf233', weight: 900, color: '#374151', size: 80 } },
+            { id: 5, label: 'Fortigate 80 F', group: 'security', level: 2, icon: { face: '"Font Awesome 6 Free"', code: '\uf3ed', weight: 900, color: '#ef4444', size: 90 } },
+            
+            { id: 6, label: 'UNMANAGED SWITCH 4 (86 PORTS)', group: 'switch_unmanaged', level: 3, icon: { face: '"Font Awesome 6 Free"', code: '\uf6ff', weight: 900, color: '#6366f1', size: 80 } },
+            { id: 7, label: 'POE', group: 'switch_poe', level: 3, icon: { face: '"Font Awesome 6 Free"', code: '\uf0e7', weight: 900, color: '#22c55e', size: 80 } },
+            
+            { id: 8, label: 'UNMANAGED SWITCH (PORT 16)', group: 'switch_unmanaged', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf6ff', weight: 900, color: '#6366f1', size: 75 } },
+            
+            { id: 9, label: 'FLOOR 1', group: 'endpoints', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
+            { id: 10, label: 'FLOOR 2', group: 'endpoints', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
+            { id: 11, label: 'FLOOR 3', group: 'endpoints', level: 5, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
+            { id: 12, label: 'FLOOR 4', group: 'endpoints', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
+            
+            { id: 13, label: 'AP 1', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
+            { id: 14, label: 'AP 2', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
+            { id: 15, label: 'AP 3', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
+            { id: 16, label: 'AP4', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } }
+        ]);
+
+        var edges = new vis.DataSet([
+            { from: 1, to: 3, label: 'OPTIC', font: {align: 'top'}, color: {color: '#94a3b8'} },
+            { from: 2, to: 4, label: 'OPTIC', font: {align: 'top'}, color: {color: '#94a3b8'} },
+            { from: 3, to: 5, label: 'WAN 1', font: {align: 'top'}, color: {color: '#94a3b8'} },
+            { from: 4, to: 5, label: 'WAN 2', font: {align: 'top'}, color: {color: '#94a3b8'} },
+            
+            { from: 5, to: 6, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            
+            { from: 6, to: 7, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            { from: 6, to: 8, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            
+            { from: 6, to: 9, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            { from: 6, to: 10, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            { from: 6, to: 12, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            
+            { from: 8, to: 11, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            
+            { from: 7, to: 13, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            { from: 7, to: 14, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            { from: 7, to: 15, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
+            { from: 7, to: 16, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} }
+        ]);
+
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+
+        var options = {
+            nodes: {
+                shape: 'icon',
+                font: {
+                    size: 14,
+                    face: 'Inter, sans-serif',
+                    color: '#1f2937',
+                    bold: { color: '#111827' }
+                },
+                shadow: {
+                    enabled: true,
+                    color: 'rgba(0,0,0,0.2)',
+                    size: 10,
+                    x: 5,
+                    y: 5
+                },
+                margin: 10
+            },
+            edges: {
+                width: 1.5,
+                smooth: {
+                    type: 'cubicBezier',
+                    forceDirection: 'vertical',
+                    roundness: 0.4
+                },
+                font: {
+                    size: 11,
+                    face: 'Inter, sans-serif',
+                    color: '#6b7280',
+                    background: 'white'
+                },
+                arrows: {
+                    to: { enabled: false } 
+                }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200,
+                zoomView: true,
+                dragView: true,
+                navigationButtons: true 
+            },
+            manipulation: {
+                enabled: true,
+                initiallyActive: true,
+                addNode: function (data, callback) {
+                    openNodeModal(data, callback, 'Add New Component');
+                },
+                editNode: function (data, callback) {
+                    openNodeModal(data, callback, 'Edit Component');
+                },
+                addEdge: function (data, callback) {
+                    if (data.from === data.to) {
+                        showNotification("Cannot connect a component to itself.", true);
+                        callback(null);
+                        return;
+                    }
+                    openEdgeModal(data, callback, 'Create Connection');
+                },
+                editEdge: function (data, callback) {
+                    openEdgeModal(data, callback, 'Edit Connection');
+                },
+                deleteNode: function(data, callback) {
+                    callback(data);
+                },
+                deleteEdge: function(data, callback) {
+                    callback(data);
+                }
+            },
+            physics: {
+                enabled: false 
+            },
+            layout: {
+                hierarchical: {
+                    enabled: true,
+                    direction: 'UD', 
+                    sortMethod: 'directed',
+                    nodeSpacing: 250,      
+                    levelSeparation: 200   
+                }
+            }
+        };
+
+        var network = new vis.Network(container, data, options);
+
+        function changeLayout(mode) {
+            if (mode === 'hierarchical') {
+                network.setOptions({
+                    physics: { enabled: false },
+                    layout: {
+                        hierarchical: {
+                            enabled: true,
+                            direction: 'UD',
+                            sortMethod: 'directed',
+                            nodeSpacing: 250,      
+                            levelSeparation: 200   
+                        }
+                    },
+                    edges: {
+                        smooth: {
+                            type: 'cubicBezier',
+                            forceDirection: 'vertical',
+                            roundness: 0.4
+                        }
+                    }
+                });
+            } else if (mode === 'free') {
+                network.setOptions({
+                    layout: { hierarchical: { enabled: false } },
+                    physics: {
+                        enabled: true,
+                        barnesHut: {
+                            gravitationalConstant: -2000,
+                            centralGravity: 0.3,
+                            springLength: 150,
+                            springConstant: 0.04,
+                            damping: 0.09,
+                            avoidOverlap: 0.1
+                        }
+                    },
+                    edges: {
+                        smooth: { type: 'continuous' }
+                    }
+                });
+            } else if (mode === 'manual') {
+                network.setOptions({
+                    layout: { hierarchical: { enabled: false } },
+                    physics: { enabled: false },
+                    edges: {
+                        smooth: { type: 'continuous' }
+                    }
+                });
+            }
+            setTimeout(() => {
+                network.fit({ animation: true });
+            }, 500);
+        }
+
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            network.fit({
+                animation: {
+                    duration: 1000,
+                    easingFunction: 'easeInOutQuad'
+                }
+            });
+        });
+
+        // Enhanced node interactivity
+        network.on("hoverNode", function (params) {
+            document.body.style.cursor = 'pointer';
+            const nodeId = params.node;
+            const node = nodes.get(nodeId);
+            
+            if (node) {
+                // Save base sizes if not already captured
+                if (!node.baseSize) node.baseSize = node.icon && node.icon.size ? node.icon.size : 80;
+                
+                // Determine glow color based on the device icon
+                const glowColor = node.icon && node.icon.color ? node.icon.color : '#3b82f6';
+                
+                nodes.update({
+                    id: nodeId,
+                    // Safely merge existing icon properties so we don't lose the icon code/face when resizing
+                    icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize * 1.35 }) : { size: node.baseSize * 1.35 },
+                    shadow: { color: glowColor, size: 35, x: 0, y: 0 } 
+                });
+            }
+        });
+        
+        network.on("blurNode", function (params) {
+            document.body.style.cursor = 'default';
+            const nodeId = params.node;
+            // Only revert if it's not currently selected
+            if (network.getSelection().nodes.includes(nodeId)) return;
+
+            const node = nodes.get(nodeId);
+            if (node && node.baseSize) {
+                nodes.update({
+                    id: nodeId,
+                    icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize }) : { size: node.baseSize }, 
+                    shadow: { color: 'rgba(0,0,0,0.2)', size: 10, x: 5, y: 5 } 
+                });
+            }
+        });
+
+        // Add selection interactivity (Clicking a node makes it pulse/grow larger)
+        network.on("selectNode", function (params) {
+            const nodeId = params.nodes[0];
+            const node = nodes.get(nodeId);
+            
+            if (node) {
+                if (!node.baseSize) node.baseSize = node.icon && node.icon.size ? node.icon.size : 80;
+                const glowColor = node.icon && node.icon.color ? node.icon.color : '#3b82f6';
+                
+                nodes.update({
+                    id: nodeId,
+                    icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize * 1.5 }) : { size: node.baseSize * 1.5 },
+                    shadow: { color: glowColor, size: 50, x: 0, y: 0 } 
+                });
+            }
+        });
+
+        network.on("deselectNode", function (params) {
+            params.previousSelection.nodes.forEach(nodeId => {
+                const node = nodes.get(nodeId);
+                if (node && node.baseSize) {
+                    nodes.update({
+                        id: nodeId,
+                        icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize }) : { size: node.baseSize },
+                        shadow: { color: 'rgba(0,0,0,0.2)', size: 10, x: 5, y: 5 } 
+                    });
+                }
+            });
+        });
+
+        let currentCallback = null;
+        let currentData = null;
+
+        function openNodeModal(data, callback, title) {
+            currentCallback = callback;
+            currentData = data;
+            document.getElementById('node-modal-title').innerHTML = `<i class="fa-solid fa-microchip mr-2"></i>${title}`;
+            document.getElementById('node-label').value = data.label || '';
+            document.getElementById('node-group').value = data.group || 'endpoints';
+            
+            let currentSize = (data.icon && data.icon.size) ? data.icon.size : 80;
+            let currentFontSize = (data.font && data.font.size) ? data.font.size : 14;
+            document.getElementById('node-size').value = currentSize;
+            document.getElementById('node-font-size').value = currentFontSize;
+
+            document.getElementById('node-modal').classList.remove('hidden');
+        }
+
+        function saveNodeModal() {
+            if (!currentData || !currentCallback) return;
+            
+            const label = document.getElementById('node-label').value;
+            const group = document.getElementById('node-group').value;
+            const size = parseInt(document.getElementById('node-size').value) || 80;
+            const fontSize = parseInt(document.getElementById('node-font-size').value) || 14;
+            
+            currentData.label = label || 'Unknown Device';
+            currentData.group = group;
+            
+            currentData.font = { size: fontSize, face: 'Inter, sans-serif' };
+            
+            if (currentData.level === undefined) {
+                 if (group === 'wan') currentData.level = 0;
+                 else if (group === 'security') currentData.level = 1;
+                 else if (group === 'routing') currentData.level = 2;
+                 else if (group === 'switch_poe' || group === 'switch_unmanaged' || group === 'switching') currentData.level = 3;
+                 else currentData.level = 4;
+            }
+
+            const iconMappings = {
+                'wan':              { code: '\uf0ac', color: '#3b82f6' },
+                'security':         { code: '\uf3ed', color: '#ef4444' },
+                'routing':          { code: '\uf233', color: '#374151' },
+                'switch_poe':       { code: '\uf0e7', color: '#16a34a' },
+                'switch_unmanaged': { code: '\uf6ff', color: '#6366f1' },
+                'switching':        { code: '\uf0e7', color: '#16a34a' },
+                'wireless':         { code: '\uf1eb', color: '#14b8a6' },
+                'endpoints':        { code: '\uf108', color: '#9ca3af' }
+            };
+            
+            if (iconMappings[group]) {
+                currentData.icon = { 
+                    face: '"Font Awesome 6 Free"', 
+                    code: iconMappings[group].code, 
+                    weight: 900, 
+                    color: iconMappings[group].color,
+                    size: size 
+                };
+            }
+            
+            currentData.baseSize = size; // Save the base size for the hover effects
+            currentData.shape = 'icon'; 
+            
+            currentCallback(currentData);
+            closeModals();
+        }
+
+        function cancelNodeModal() {
+            if (currentCallback) currentCallback(null);
+            closeModals();
+        }
+
+        function openEdgeModal(data, callback, title) {
+            currentCallback = callback;
+            currentData = data;
+            document.getElementById('edge-modal-title').innerHTML = `<i class="fa-solid fa-link mr-2"></i>${title}`;
+            document.getElementById('edge-label').value = data.label || '';
+            document.getElementById('edge-modal').classList.remove('hidden');
+        }
+
+        function saveEdgeModal() {
+            if (!currentData || !currentCallback) return;
+            
+            const label = document.getElementById('edge-label').value;
+            if (label) {
+                currentData.label = label;
+                currentData.font = { align: 'horizontal' };
+            }
+            
+            if (!currentData.color) {
+                currentData.color = { color: '#64748b' };
+            }
+
+            currentCallback(currentData);
+            closeModals();
+        }
+
+        function cancelEdgeModal() {
+            if (currentCallback) currentCallback(null);
+            closeModals();
+        }
+
+        function closeModals() {
+            document.getElementById('node-modal').classList.add('hidden');
+            document.getElementById('edge-modal').classList.add('hidden');
+            currentCallback = null;
+            currentData = null;
+        }
+
+        document.getElementById('import-csv').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csvData = event.target.result;
+                parseAndLoadCSV(csvData);
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        });
+
+        function parseAndLoadCSV(csvText) {
+            try {
+                const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                
+                let parsingMode = 'none';
+                const newNodes = [];
+                const newEdges = [];
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    if (line.toLowerCase().startsWith('nodes:')) {
+                        parsingMode = 'nodes';
+                        continue;
+                    } else if (line.toLowerCase().startsWith('edges:')) {
+                        parsingMode = 'edges';
+                        continue;
+                    }
+
+                    if (parsingMode === 'none') {
+                         if (line.toLowerCase().includes('id') && line.toLowerCase().includes('label')) {
+                             parsingMode = 'nodes';
+                             continue;
+                         }
+                    }
+                    
+                    if (line.toLowerCase() === 'id,label,group' || line.toLowerCase() === 'from,to,label') continue;
+
+                    const parts = line.split(',').map(part => part.trim());
+
+                    if (parsingMode === 'nodes') {
+                        if (parts.length >= 2) {
+                            const node = { id: parts[0], label: parts[1] };
+                            if (parts.length >= 3 && parts[2]) node.group = parts[2];
+                            
+                            if (node.group === 'wan') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf0ac', weight: 900, color: '#3b82f6' };
+                            else if (node.group === 'security') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf3ed', weight: 900, color: '#ef4444' };
+                            else if (node.group === 'routing') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf233', weight: 900, color: '#374151' };
+                            else if (node.group === 'switch_poe') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf0e7', weight: 900, color: '#16a34a' };
+                            else if (node.group === 'switch_unmanaged') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf6ff', weight: 900, color: '#6366f1' };
+                            else if (node.group === 'switching') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf0e7', weight: 900, color: '#16a34a' }; 
+                            else if (node.group === 'wireless') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6' };
+                            else if (node.group === 'endpoints') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af' };
+                            else {
+                                node.shape = 'dot';
+                                node.color = '#cbd5e1';
+                            }
+                            
+                            newNodes.push(node);
+                        }
+                    } else if (parsingMode === 'edges') {
+                        if (parts.length >= 2) {
+                            const edge = { from: parts[0], to: parts[1] };
+                            if (parts.length >= 3 && parts[2]) {
+                                edge.label = parts[2];
+                                edge.font = { align: 'horizontal' };
+                            }
+                            newEdges.push(edge);
+                        }
+                    }
+                }
+
+                if (newNodes.length > 0) {
+                    nodes.clear();
+                    nodes.add(newNodes);
+                    edges.clear();
+                    if (newEdges.length > 0) {
+                        edges.add(newEdges);
+                    }
+                    network.fit();
+                    showNotification("Data loaded successfully!");
+                } else {
+                    showNotification("No valid node data found in CSV. Please ensure correct format.", true);
+                }
+                
+            } catch (err) {
+                console.error("Error parsing CSV:", err);
+                showNotification("Failed to parse CSV file.", true);
+            }
+        }
+        
+        function showNotification(message, isError = false) {
+             const panel = document.createElement('div');
+             panel.className = `fixed top-4 right-4 p-4 rounded shadow-lg text-white font-bold z-50 transition-opacity duration-500 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+             panel.textContent = message;
+             document.body.appendChild(panel);
+             
+             setTimeout(() => {
+                 panel.style.opacity = '0';
+                 setTimeout(() => panel.remove(), 500);
+             }, 3000);
+        }
+
+        function getHighResCanvas(callback) {
+            showNotification("Generating high-quality export of your current view...");
+            
+            const currentScale = network.getScale();
+            const currentViewPosition = network.getViewPosition();
+            
+            const exportScaleMultiplier = 3; 
+            const targetWidth = container.clientWidth * exportScaleMultiplier;
+            const targetHeight = container.clientHeight * exportScaleMultiplier;
+
+            const exportContainer = document.createElement('div');
+            exportContainer.style.width = targetWidth + 'px'; 
+            exportContainer.style.height = targetHeight + 'px'; 
+            exportContainer.style.position = 'absolute';
+            exportContainer.style.top = '-9999px'; 
+            exportContainer.style.left = '-9999px';
+            document.body.appendChild(exportContainer);
+
+            const currentPositions = network.getPositions();
+            const clonedNodes = new vis.DataSet();
+            
+            nodes.get().forEach(node => {
+                const clone = { ...node };
+                if (currentPositions[node.id]) {
+                    clone.x = currentPositions[node.id].x;
+                    clone.y = currentPositions[node.id].y;
+                }
+                clonedNodes.add(clone);
+            });
+            const clonedEdges = new vis.DataSet(edges.get());
+
+            const exportOptions = Object.assign({}, options);
+            
+            // CRITICAL FIX: Disable hierarchical auto-layout in the export clone!
+            // This forces the clone to perfectly respect the exact X/Y coordinates we just copied, 
+            // preventing the nodes from scattering or disappearing during the high-res capture.
+            exportOptions.layout = Object.assign({}, options.layout, { hierarchical: { enabled: false } });
+            exportOptions.physics = { enabled: false }; 
+            exportOptions.interaction = { dragNodes: false, zoomView: false, dragView: false };
+            exportOptions.manipulation = { enabled: false }; 
+
+            const exportNetwork = new vis.Network(exportContainer, {
+                nodes: clonedNodes,
+                edges: clonedEdges
+            }, exportOptions);
+
+            exportNetwork.once("afterDrawing", function() {
+                setTimeout(() => {
+                    const canvas = exportContainer.querySelector('canvas');
+                    const destCanvas = document.createElement('canvas');
+                    
+                    if (canvas) {
+                        destCanvas.width = canvas.width;
+                        destCanvas.height = canvas.height;
+                        const ctx = destCanvas.getContext('2d');
+                        
+                        const width = destCanvas.width;
+                        const height = destCanvas.height;
+
+                        // 1. Draw the Blue Gradient Background for Export
+                        const gradient = ctx.createLinearGradient(0, 0, width, height);
+                        gradient.addColorStop(0, '#e0f2fe'); // Light sky blue
+                        gradient.addColorStop(0.5, '#bae6fd'); // Mid blue
+                        gradient.addColorStop(1, '#7dd3fc'); // Deeper sky blue
+                        ctx.fillStyle = gradient;
+                        ctx.fillRect(0, 0, width, height);
+
+                        // 2. Draw static network graphics scaled up for Export
+                        const particles = [];
+                        for (let i = 0; i < 150; i++) {
+                            particles.push({
+                                x: Math.random() * width,
+                                y: Math.random() * height,
+                                radius: (Math.random() * 2.5 + 1) * exportScaleMultiplier
+                            });
+                        }
+
+                        particles.forEach(p => {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                            ctx.fill();
+                        });
+
+                        for (let i = 0; i < particles.length; i++) {
+                            for (let j = i + 1; j < particles.length; j++) {
+                                const dx = particles[i].x - particles[j].x;
+                                const dy = particles[i].y - particles[j].y;
+                                const dist = Math.sqrt(dx * dx + dy * dy);
+                                const threshold = 160 * exportScaleMultiplier;
+                                
+                                if (dist < threshold) {
+                                    ctx.beginPath();
+                                    ctx.moveTo(particles[i].x, particles[i].y);
+                                    ctx.lineTo(particles[j].x, particles[j].y);
+                                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 * (1 - dist / threshold)})`;
+                                    ctx.stroke();
+                                }
+                            }
+                        }
+                        
+                        // Draw the actual Vis-Network Diagram over the generated background
+                        ctx.drawImage(canvas, 0, 0);
+
+                        const centerNameElem = document.getElementById('center-name-text');
+                        if (centerNameElem && centerNameElem.innerText.trim() !== '') {
+                            const centerName = centerNameElem.innerText.trim();
+                            
+                            const fontSize = 32 * exportScaleMultiplier;
+                            ctx.font = `900 ${fontSize}px Inter, sans-serif`; 
+                            
+                            const xPos = 40 * exportScaleMultiplier;
+                            const yPos = 80 * exportScaleMultiplier;
+                            
+                            ctx.lineJoin = 'round';
+                            ctx.lineWidth = 8 * exportScaleMultiplier;
+                            ctx.strokeStyle = 'white';
+                            ctx.strokeText(centerName, xPos, yPos);
+                            
+                            ctx.fillStyle = '#111827'; 
+                            ctx.fillText(centerName, xPos, yPos); 
+                        }
+                    }
+
+                    exportNetwork.destroy();
+                    document.body.removeChild(exportContainer);
+                    
+                    callback(destCanvas.width > 0 ? destCanvas : null);
+                }, 1200); // Increased wait time slightly to guarantee all high-res FontAwesome icons fully render
+            });
+
+            exportNetwork.moveTo({
+                position: { x: currentViewPosition.x, y: currentViewPosition.y },
+                scale: currentScale * exportScaleMultiplier
+            });
+        }
+
+        function exportImage() {
+            getHighResCanvas(function(canvas) {
+                if (!canvas) {
+                    showNotification("Error: Could not generate image.", true);
+                    return;
+                }
+                
+                const imageURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = imageURL;
+                link.download = 'Network_Diagram_HQ.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showNotification("High-quality image saved successfully!");
+            });
+        }
+
+        function exportPDF() {
+            getHighResCanvas(function(canvas) {
+                if (!canvas) {
+                    showNotification("Error: Could not generate document.", true);
+                    return;
+                }
+
+                try {
+                    window.jsPDF = window.jspdf.jsPDF;
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const pdf = new jsPDF({
+                        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+                        unit: 'px',
+                        format: [canvas.width, canvas.height]
+                    });
+
+                    pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+                    pdf.save('Network_Architecture_HQ.pdf');
+                    
+                    showNotification("High-quality PDF exported successfully!");
+                } catch (err) {
+                    console.error("PDF Export Error: ", err);
+                    showNotification("Failed to create PDF. Check console for details.", true);
+                }
+            });
+        }
+        
+        // --- Project Import/Export (JSON) logic ---
+        
+        function exportProject() {
+            const currentPositions = network.getPositions();
+            
+            // Get all nodes and update them with exact current screen positions
+            const projectNodes = nodes.get().map(node => {
+                if (currentPositions[node.id]) {
+                    return { ...node, x: currentPositions[node.id].x, y: currentPositions[node.id].y };
+                }
+                return node;
+            });
+            
+            const projectData = {
+                nodes: projectNodes,
+                edges: edges.get(),
+                centerName: document.getElementById('center-name-text').innerText
+            };
+            
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
+            const link = document.createElement("a");
+            link.setAttribute("href", dataStr);
+            link.setAttribute("download", "network_project_save.json");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showNotification("Project file saved successfully!");
+        }
+
+        document.getElementById('import-project').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    if (data.nodes && data.edges) {
+                        
+                        // FIX: Switch automatically to manual layout FIRST so loaded positions are strictly respected
+                        // This prevents the hierarchical engine from temporarily scrambling the saved X/Y coordinates
+                        const manualToggle = document.querySelector('input[value="manual"]');
+                        if (manualToggle) manualToggle.checked = true;
+                        changeLayout('manual');
+                        
+                        // NOW load the nodes into the dataset
+                        nodes.clear();
+                        edges.clear();
+                        nodes.add(data.nodes);
+                        edges.add(data.edges);
+                        
+                        if (data.centerName) {
+                            document.getElementById('center-name-text').innerText = data.centerName;
+                        }
+                        
+                        network.fit({ animation: true });
+                        showNotification("Project loaded successfully!");
+                    } else {
+                        showNotification("Error: Invalid project file format.", true);
+                    }
+                } catch (err) {
+                    console.error("Parse Error:", err);
+                    showNotification("Error parsing project file.", true);
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; 
+        });
+
+        // Initialize Static Network Background Graphic
+        function initStaticBackground() {
+            const canvas = document.getElementById('bg-canvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+
+            function drawStaticNetwork() {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+                
+                // 1. Draw the Blue Gradient Background
+                const gradient = ctx.createLinearGradient(0, 0, width, height);
+                gradient.addColorStop(0, '#e0f2fe'); // Light sky blue
+                gradient.addColorStop(0.5, '#bae6fd'); // Mid blue
+                gradient.addColorStop(1, '#7dd3fc'); // Deeper sky blue
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+
+                // 2. Draw static network graphics (nodes and edges)
+                const particles = [];
+                for (let i = 0; i < 120; i++) {
+                    particles.push({
+                        x: Math.random() * width,
+                        y: Math.random() * height,
+                        radius: Math.random() * 2.5 + 1
+                    });
+                }
+
+                particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // White nodes for contrast
+                    ctx.fill();
+                });
+
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < 160) {
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 * (1 - dist / 160)})`;
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+            
+            drawStaticNetwork();
+            window.addEventListener('resize', drawStaticNetwork);
+        }
+        
+        // Start the background graphic
+        initStaticBackground();
+    </script>
+</body>
+</html>
