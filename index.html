@@ -144,6 +144,9 @@
         <button onclick="deleteSelected()" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-2 rounded shadow text-sm font-semibold flex items-center gap-1 transition" title="Delete Selected Node/Edge">
             <i class="fa-solid fa-trash"></i>
         </button>
+        <button onclick="clearCanvas()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-2 rounded shadow text-sm font-semibold flex items-center gap-2 transition" title="Clear all components for a blank canvas">
+            <i class="fa-solid fa-file-circle-plus"></i> Blank Workspace
+        </button>
     </div>
 
     <!-- Dynamic Background Canvas -->
@@ -344,6 +347,15 @@
         });
 
         // --- Custom Toolbar Actions ---
+
+        function clearCanvas() {
+            if (confirm("Are you sure you want to clear all devices and start with a blank workspace?")) {
+                nodes.clear();
+                edges.clear();
+                document.getElementById('center-name-text').innerText = 'New Site';
+                showNotification("Workspace cleared! Blank canvas ready.");
+            }
+        }
         
         function startAddNode() {
             const newId = Date.now();
@@ -357,7 +369,6 @@
             };
             openNodeModal(modalData, function(savedNode) {
                 if (savedNode) {
-                    // Switch to manual layout temporarily or place near center view to guarantee visibility
                     const viewCenter = network.getViewPosition();
                     savedNode.x = viewCenter.x;
                     savedNode.y = viewCenter.y + 50;
