@@ -180,7 +180,7 @@
             <h2 id="node-modal-title" class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-microchip mr-2"></i>Add Component</h2>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Device Name/Label</label>
-                <textarea id="node-label" rows="2" class="shadow-sm appearance-none border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Switch Floor 2"></textarea>
+                <textarea id="node-label" rows="2" class="shadow-sm appearance-none border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Biometric Scanner Gate 1"></textarea>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Device Type</label>
@@ -191,6 +191,7 @@
                     <option value="switch_poe">POE Switch</option>
                     <option value="switch_unmanaged">Unmanaged Switch</option>
                     <option value="wireless">Wireless Access Point</option>
+                    <option value="biometric">Biometric Device</option>
                     <option value="endpoints">PC / Endpoint</option>
                 </select>
             </div>
@@ -242,25 +243,27 @@
             { id: 13, label: 'AP 1', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
             { id: 14, label: 'AP 2', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
             { id: 15, label: 'AP 3', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
-            { id: 16, label: 'AP4', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } }
+            { id: 16, label: 'AP4', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
+            { id: 17, label: 'BIOMETRIC 1', group: 'biometric', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf577', weight: 900, color: '#d97706', size: 75 } }
         ]);
 
         var edges = new vis.DataSet([
-            { from: 1, to: 3, label: 'OPTIC', font: {align: 'top'}, color: {color: '#94a3b8'} },
-            { from: 2, to: 4, label: 'OPTIC', font: {align: 'top'}, color: {color: '#94a3b8'} },
-            { from: 3, to: 5, label: 'WAN 1', font: {align: 'top'}, color: {color: '#94a3b8'} },
-            { from: 4, to: 5, label: 'WAN 2', font: {align: 'top'}, color: {color: '#94a3b8'} },
-            { from: 5, to: 6, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 6, to: 7, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 6, to: 8, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 6, to: 9, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 6, to: 10, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 6, to: 12, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 8, to: 11, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 7, to: 13, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 7, to: 14, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 7, to: 15, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            { from: 7, to: 16, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} }
+            { from: 1, to: 3, label: 'OPTIC', font: {align: 'middle'}, color: {color: '#94a3b8'} },
+            { from: 2, to: 4, label: 'OPTIC', font: {align: 'middle'}, color: {color: '#94a3b8'} },
+            { from: 3, to: 5, label: 'WAN 1', font: {align: 'middle'}, color: {color: '#94a3b8'} },
+            { from: 4, to: 5, label: 'WAN 2', font: {align: 'middle'}, color: {color: '#94a3b8'} },
+            { from: 5, to: 6, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 6, to: 7, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 6, to: 8, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 6, to: 9, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 6, to: 10, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 6, to: 12, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 8, to: 11, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 7, to: 13, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 7, to: 14, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 7, to: 15, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 7, to: 16, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} },
+            { from: 7, to: 17, label: 'LAN', font: {align: 'middle'}, color: {color: '#64748b'} }
         ]);
 
         var container = document.getElementById('mynetwork');
@@ -539,6 +542,7 @@
                 'switch_unmanaged': { code: '\uf6ff', color: '#6366f1' },
                 'switching': { code: '\uf0e7', color: '#16a34a' },
                 'wireless': { code: '\uf1eb', color: '#14b8a6' },
+                'biometric': { code: '\uf577', color: '#d97706' },
                 'endpoints': { code: '\uf108', color: '#9ca3af' }
             };
             
@@ -576,7 +580,7 @@
             const label = document.getElementById('edge-label').value;
             if (label) {
                 currentData.label = label;
-                currentData.font = { align: 'horizontal' };
+                currentData.font = { align: 'middle' };
             }
             if (!currentData.color) {
                 currentData.color = { color: '#64748b' };
@@ -646,6 +650,7 @@
                             else if (node.group === 'switch_unmanaged') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf6ff', weight: 900, color: '#6366f1' };
                             else if (node.group === 'switching') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf0e7', weight: 900, color: '#16a34a' }; 
                             else if (node.group === 'wireless') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6' };
+                            else if (node.group === 'biometric') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf577', weight: 900, color: '#d97706' };
                             else if (node.group === 'endpoints') node.icon = { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af' };
                             else {
                                 node.shape = 'dot';
@@ -658,7 +663,7 @@
                             const edge = { from: parts[0], to: parts[1] };
                             if (parts.length >= 3 && parts[2]) {
                                 edge.label = parts[2];
-                                edge.font = { align: 'horizontal' };
+                                edge.font = { align: 'middle' };
                             }
                             newEdges.push(edge);
                         }
