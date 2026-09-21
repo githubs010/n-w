@@ -75,54 +75,18 @@
             z-index: 20;
         }
 
-        #legend-panel {
+        #custom-toolbar {
             position: absolute;
-            top: 5rem;
-            left: 2rem;
+            top: 110px;
+            right: 2rem;
             background: white;
-            padding: 1rem;
+            padding: 0.5rem;
             border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 0.5rem;
             z-index: 20;
-            max-width: 250px;
-        }
-
-        .legend-item {
-            display: flex;
             align-items: center;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-            color: #4b5563;
-        }
-
-        .legend-icon {
-            width: 24px;
-            text-align: center;
-            margin-right: 0.75rem;
-            font-size: 1.2rem;
-        }
-
-        div.vis-network div.vis-manipulation {
-            border: none;
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            border-radius: 0.5rem;
-            padding: 10px 15px;
-            top: 20px;
-            left: auto;
-            right: 20px;
-            width: auto;
-            font-family: 'Inter', sans-serif;
-            color: #374151;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        div.vis-network div.vis-manipulation-button {
-            border-radius: 4px;
-            margin-right: 0;
-            padding: 5px 10px;
         }
     </style>
 </head>
@@ -161,12 +125,25 @@
         </div>
     </div>
 
-    <!-- Editable Center Name Overlay (Top Left of Canvas) -->
+    <!-- Editable Center Name Overlay -->
     <div id="center-name-overlay" class="absolute left-6 z-10 pointer-events-auto" style="top: 110px;">
         <div class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 ml-1 drop-shadow-sm"><i class="fa-solid fa-location-dot mr-1"></i> Site Name</div>
         <h2 id="center-name-text" contenteditable="true" class="text-3xl font-extrabold text-gray-900 tracking-tight bg-white/80 px-4 py-2 rounded-lg border border-gray-300 shadow-lg backdrop-blur-md outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all cursor-text" spellcheck="false" title="Click to edit the center name">
             Center Name
         </h2>
+    </div>
+
+    <!-- Custom Interactive Toolbar -->
+    <div id="custom-toolbar">
+        <button onclick="startAddNode()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded shadow text-sm font-semibold flex items-center gap-2 transition" title="Add New Component">
+            <i class="fa-solid fa-plus"></i> Add Device
+        </button>
+        <button id="connect-mode-btn" onclick="toggleConnectMode()" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 rounded shadow text-sm font-semibold flex items-center gap-2 transition" title="Connect two devices">
+            <i class="fa-solid fa-project-diagram"></i> Connect Devices
+        </button>
+        <button onclick="deleteSelected()" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-2 rounded shadow text-sm font-semibold flex items-center gap-1 transition" title="Delete Selected Node/Edge">
+            <i class="fa-solid fa-trash"></i>
+        </button>
     </div>
 
     <!-- Dynamic Background Canvas -->
@@ -175,7 +152,7 @@
     <!-- The main container where vis-network will draw the diagram -->
     <div id="mynetwork"></div>
 
-    <!-- Controls panel to toggle between Structured and Free-form layouts -->
+    <!-- Controls panel to toggle layouts -->
     <div id="controls-panel">
         <h3 class="text-sm font-semibold mb-2 text-gray-800 border-b pb-1">Layout Mode</h3>
         <div class="flex flex-col gap-2">
@@ -194,7 +171,7 @@
         </div>
     </div>
 
-    <!-- Modals for Drag and Drop Customization -->
+    <!-- Modals -->
     <div id="node-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center backdrop-blur-sm transition-opacity">
         <div class="bg-white rounded-lg p-6 w-96 shadow-xl border border-gray-200">
             <h2 id="node-modal-title" class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-microchip mr-2"></i>Add Component</h2>
@@ -236,7 +213,7 @@
             <h2 id="edge-modal-title" class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-link mr-2"></i>Connect Devices</h2>
             <div class="mb-6">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Connection Type/Label</label>
-                <input type="text" id="edge-label" class="shadow-sm appearance-none border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="e.g. Fiber Uplink">
+                <input type="text" id="edge-label" class="shadow-sm appearance-none border border-gray-300 rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" value="LAN" placeholder="e.g. LAN, Fiber Uplink">
             </div>
             <div class="flex justify-end gap-3">
                 <button onclick="cancelEdgeModal()" class="bg-white hover:bg-gray-100 text-gray-700 font-semibold py-2 px-4 border border-gray-300 rounded shadow-sm transition">Cancel</button>
@@ -252,17 +229,13 @@
             { id: 3, label: 'AIRTEL ILL 400 Mbps', group: 'routing', level: 1, icon: { face: '"Font Awesome 6 Free"', code: '\uf233', weight: 900, color: '#374151', size: 80 } },
             { id: 4, label: 'BSNL 1 Gbps', group: 'routing', level: 1, icon: { face: '"Font Awesome 6 Free"', code: '\uf233', weight: 900, color: '#374151', size: 80 } },
             { id: 5, label: 'Fortigate 80 F', group: 'security', level: 2, icon: { face: '"Font Awesome 6 Free"', code: '\uf3ed', weight: 900, color: '#ef4444', size: 90 } },
-            
             { id: 6, label: 'UNMANAGED SWITCH 4 (86 PORTS)', group: 'switch_unmanaged', level: 3, icon: { face: '"Font Awesome 6 Free"', code: '\uf6ff', weight: 900, color: '#6366f1', size: 80 } },
             { id: 7, label: 'POE', group: 'switch_poe', level: 3, icon: { face: '"Font Awesome 6 Free"', code: '\uf0e7', weight: 900, color: '#22c55e', size: 80 } },
-            
             { id: 8, label: 'UNMANAGED SWITCH (PORT 16)', group: 'switch_unmanaged', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf6ff', weight: 900, color: '#6366f1', size: 75 } },
-            
             { id: 9, label: 'FLOOR 1', group: 'endpoints', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
             { id: 10, label: 'FLOOR 2', group: 'endpoints', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
             { id: 11, label: 'FLOOR 3', group: 'endpoints', level: 5, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
             { id: 12, label: 'FLOOR 4', group: 'endpoints', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 } },
-            
             { id: 13, label: 'AP 1', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
             { id: 14, label: 'AP 2', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
             { id: 15, label: 'AP 3', group: 'wireless', level: 4, icon: { face: '"Font Awesome 6 Free"', code: '\uf1eb', weight: 900, color: '#14b8a6', size: 80 } },
@@ -274,18 +247,13 @@
             { from: 2, to: 4, label: 'OPTIC', font: {align: 'top'}, color: {color: '#94a3b8'} },
             { from: 3, to: 5, label: 'WAN 1', font: {align: 'top'}, color: {color: '#94a3b8'} },
             { from: 4, to: 5, label: 'WAN 2', font: {align: 'top'}, color: {color: '#94a3b8'} },
-            
             { from: 5, to: 6, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            
             { from: 6, to: 7, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
             { from: 6, to: 8, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            
             { from: 6, to: 9, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
             { from: 6, to: 10, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
             { from: 6, to: 12, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            
             { from: 8, to: 11, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
-            
             { from: 7, to: 13, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
             { from: 7, to: 14, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
             { from: 7, to: 15, label: 'LAN', font: {align: 'top'}, color: {color: '#64748b'} },
@@ -293,90 +261,37 @@
         ]);
 
         var container = document.getElementById('mynetwork');
-        var data = {
-            nodes: nodes,
-            edges: edges
-        };
+        var data = { nodes: nodes, edges: edges };
 
         var options = {
             nodes: {
                 shape: 'icon',
-                font: {
-                    size: 14,
-                    face: 'Inter, sans-serif',
-                    color: '#1f2937',
-                    bold: { color: '#111827' }
-                },
-                shadow: {
-                    enabled: true,
-                    color: 'rgba(0,0,0,0.2)',
-                    size: 10,
-                    x: 5,
-                    y: 5
-                },
+                font: { size: 14, face: 'Inter, sans-serif', color: '#1f2937', bold: { color: '#111827' } },
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.2)', size: 10, x: 5, y: 5 },
                 margin: 10
             },
             edges: {
                 width: 1.5,
-                smooth: {
-                    type: 'cubicBezier',
-                    forceDirection: 'vertical',
-                    roundness: 0.4
-                },
-                font: {
-                    size: 11,
-                    face: 'Inter, sans-serif',
-                    color: '#6b7280',
-                    background: 'white'
-                },
-                arrows: {
-                    to: { enabled: false } 
-                }
+                smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.4 },
+                font: { size: 11, face: 'Inter, sans-serif', color: '#6b7280', background: 'white' },
+                arrows: { to: { enabled: false } }
             },
             interaction: {
                 hover: true,
                 tooltipDelay: 200,
                 zoomView: true,
                 dragView: true,
-                navigationButtons: true 
+                navigationButtons: true
             },
-            manipulation: {
-                enabled: true,
-                initiallyActive: true,
-                addNode: function (data, callback) {
-                    openNodeModal(data, callback, 'Add New Component');
-                },
-                editNode: function (data, callback) {
-                    openNodeModal(data, callback, 'Edit Component');
-                },
-                addEdge: function (data, callback) {
-                    if (data.from === data.to) {
-                        showNotification("Cannot connect a component to itself.", true);
-                        callback(null);
-                        return;
-                    }
-                    openEdgeModal(data, callback, 'Create Connection');
-                },
-                editEdge: function (data, callback) {
-                    openEdgeModal(data, callback, 'Edit Connection');
-                },
-                deleteNode: function(data, callback) {
-                    callback(data);
-                },
-                deleteEdge: function(data, callback) {
-                    callback(data);
-                }
-            },
-            physics: {
-                enabled: false 
-            },
+            manipulation: { enabled: false },
+            physics: { enabled: false },
             layout: {
                 hierarchical: {
                     enabled: true,
-                    direction: 'UD', 
+                    direction: 'UD',
                     sortMethod: 'directed',
-                    nodeSpacing: 250,      
-                    levelSeparation: 200   
+                    nodeSpacing: 250,
+                    levelSeparation: 200
                 }
             }
         };
@@ -392,17 +307,11 @@
                             enabled: true,
                             direction: 'UD',
                             sortMethod: 'directed',
-                            nodeSpacing: 250,      
-                            levelSeparation: 200   
+                            nodeSpacing: 250,
+                            levelSeparation: 200
                         }
                     },
-                    edges: {
-                        smooth: {
-                            type: 'cubicBezier',
-                            forceDirection: 'vertical',
-                            roundness: 0.4
-                        }
-                    }
+                    edges: { smooth: { type: 'cubicBezier', forceDirection: 'vertical', roundness: 0.4 } }
                 });
             } else if (mode === 'free') {
                 network.setOptions({
@@ -418,51 +327,119 @@
                             avoidOverlap: 0.1
                         }
                     },
-                    edges: {
-                        smooth: { type: 'continuous' }
-                    }
+                    edges: { smooth: { type: 'continuous' } }
                 });
             } else if (mode === 'manual') {
                 network.setOptions({
                     layout: { hierarchical: { enabled: false } },
                     physics: { enabled: false },
-                    edges: {
-                        smooth: { type: 'continuous' }
-                    }
+                    edges: { smooth: { type: 'continuous' } }
                 });
             }
-            setTimeout(() => {
-                network.fit({ animation: true });
-            }, 500);
+            setTimeout(() => { network.fit({ animation: true }); }, 500);
         }
 
         document.getElementById('reset-btn').addEventListener('click', function() {
-            network.fit({
-                animation: {
-                    duration: 1000,
-                    easingFunction: 'easeInOutQuad'
-                }
-            });
+            network.fit({ animation: { duration: 1000, easingFunction: 'easeInOutQuad' } });
         });
 
-        // Enhanced node interactivity
+        // --- Custom Toolbar Actions ---
+        
+        function startAddNode() {
+            const newId = Date.now();
+            const modalData = {
+                id: newId,
+                label: 'New Device',
+                group: 'endpoints',
+                x: 0,
+                y: 0,
+                icon: { face: '"Font Awesome 6 Free"', code: '\uf108', weight: 900, color: '#9ca3af', size: 70 }
+            };
+            openNodeModal(modalData, function(savedNode) {
+                if (savedNode) {
+                    // Switch to manual layout temporarily or place near center view to guarantee visibility
+                    const viewCenter = network.getViewPosition();
+                    savedNode.x = viewCenter.x;
+                    savedNode.y = viewCenter.y + 50;
+
+                    nodes.add(savedNode);
+                    network.fit({ animation: true });
+                    showNotification("Component added and centered successfully!");
+                }
+            }, 'Add New Component');
+        }
+
+        let isConnectMode = false;
+        let connectSourceId = null;
+
+        function toggleConnectMode() {
+            isConnectMode = !isConnectMode;
+            const btn = document.getElementById('connect-mode-btn');
+            if (isConnectMode) {
+                btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btn.classList.add('bg-green-600', 'hover:bg-green-500', 'ring-4', 'ring-green-300');
+                showNotification("Connect Mode Active: Click source node, then target node.");
+            } else {
+                btn.classList.remove('bg-green-600', 'hover:bg-green-500', 'ring-4', 'ring-green-300');
+                btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+                connectSourceId = null;
+                showNotification("Connect Mode Deactivated.");
+            }
+        }
+
+        network.on("click", function(params) {
+            if (!isConnectMode) return;
+            
+            if (params.nodes.length > 0) {
+                const clickedNodeId = params.nodes[0];
+                if (connectSourceId === null) {
+                    connectSourceId = clickedNodeId;
+                    showNotification(`Source node selected (${nodes.get(clickedNodeId).label}). Now click target node.`);
+                } else {
+                    if (connectSourceId === clickedNodeId) {
+                        showNotification("Cannot connect a node to itself.", true);
+                        return;
+                    }
+                    const sourceId = connectSourceId;
+                    const targetId = clickedNodeId;
+                    
+                    toggleConnectMode();
+                    
+                    openEdgeModal({ from: sourceId, to: targetId, label: 'LAN' }, function(savedEdge) {
+                        if (savedEdge) {
+                            edges.add(savedEdge);
+                            network.fit({ animation: true });
+                            showNotification("Devices connected successfully!");
+                        }
+                    }, 'Create Connection');
+                }
+            }
+        });
+
+        function deleteSelected() {
+            const selection = network.getSelection();
+            if (selection.nodes.length > 0) {
+                nodes.remove(selection.nodes);
+                showNotification("Selected device(s) deleted.");
+            } else if (selection.edges.length > 0) {
+                edges.remove(selection.edges);
+                showNotification("Selected connection deleted.");
+            } else {
+                showNotification("Please select a device or connection to delete.", true);
+            }
+        }
+
         network.on("hoverNode", function (params) {
             document.body.style.cursor = 'pointer';
             const nodeId = params.node;
             const node = nodes.get(nodeId);
-            
             if (node) {
-                // Save base sizes if not already captured
                 if (!node.baseSize) node.baseSize = node.icon && node.icon.size ? node.icon.size : 80;
-                
-                // Determine glow color based on the device icon
                 const glowColor = node.icon && node.icon.color ? node.icon.color : '#3b82f6';
-                
                 nodes.update({
                     id: nodeId,
-                    // Safely merge existing icon properties so we don't lose the icon code/face when resizing
                     icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize * 1.35 }) : { size: node.baseSize * 1.35 },
-                    shadow: { color: glowColor, size: 35, x: 0, y: 0 } 
+                    shadow: { color: glowColor, size: 35, x: 0, y: 0 }
                 });
             }
         });
@@ -470,32 +447,27 @@
         network.on("blurNode", function (params) {
             document.body.style.cursor = 'default';
             const nodeId = params.node;
-            // Only revert if it's not currently selected
             if (network.getSelection().nodes.includes(nodeId)) return;
-
             const node = nodes.get(nodeId);
             if (node && node.baseSize) {
                 nodes.update({
                     id: nodeId,
-                    icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize }) : { size: node.baseSize }, 
-                    shadow: { color: 'rgba(0,0,0,0.2)', size: 10, x: 5, y: 5 } 
+                    icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize }) : { size: node.baseSize },
+                    shadow: { color: 'rgba(0,0,0,0.2)', size: 10, x: 5, y: 5 }
                 });
             }
         });
 
-        // Add selection interactivity (Clicking a node makes it pulse/grow larger)
         network.on("selectNode", function (params) {
             const nodeId = params.nodes[0];
             const node = nodes.get(nodeId);
-            
             if (node) {
                 if (!node.baseSize) node.baseSize = node.icon && node.icon.size ? node.icon.size : 80;
                 const glowColor = node.icon && node.icon.color ? node.icon.color : '#3b82f6';
-                
                 nodes.update({
                     id: nodeId,
                     icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize * 1.5 }) : { size: node.baseSize * 1.5 },
-                    shadow: { color: glowColor, size: 50, x: 0, y: 0 } 
+                    shadow: { color: glowColor, size: 50, x: 0, y: 0 }
                 });
             }
         });
@@ -507,7 +479,7 @@
                     nodes.update({
                         id: nodeId,
                         icon: node.icon ? Object.assign({}, node.icon, { size: node.baseSize }) : { size: node.baseSize },
-                        shadow: { color: 'rgba(0,0,0,0.2)', size: 10, x: 5, y: 5 } 
+                        shadow: { color: 'rgba(0,0,0,0.2)', size: 10, x: 5, y: 5 }
                     });
                 }
             });
@@ -522,18 +494,15 @@
             document.getElementById('node-modal-title').innerHTML = `<i class="fa-solid fa-microchip mr-2"></i>${title}`;
             document.getElementById('node-label').value = data.label || '';
             document.getElementById('node-group').value = data.group || 'endpoints';
-            
             let currentSize = (data.icon && data.icon.size) ? data.icon.size : 80;
             let currentFontSize = (data.font && data.font.size) ? data.font.size : 14;
             document.getElementById('node-size').value = currentSize;
             document.getElementById('node-font-size').value = currentFontSize;
-
             document.getElementById('node-modal').classList.remove('hidden');
         }
 
         function saveNodeModal() {
             if (!currentData || !currentCallback) return;
-            
             const label = document.getElementById('node-label').value;
             const group = document.getElementById('node-group').value;
             const size = parseInt(document.getElementById('node-size').value) || 80;
@@ -541,7 +510,6 @@
             
             currentData.label = label || 'Unknown Device';
             currentData.group = group;
-            
             currentData.font = { size: fontSize, face: 'Inter, sans-serif' };
             
             if (currentData.level === undefined) {
@@ -553,14 +521,14 @@
             }
 
             const iconMappings = {
-                'wan':              { code: '\uf0ac', color: '#3b82f6' },
-                'security':         { code: '\uf3ed', color: '#ef4444' },
-                'routing':          { code: '\uf233', color: '#374151' },
-                'switch_poe':       { code: '\uf0e7', color: '#16a34a' },
+                'wan': { code: '\uf0ac', color: '#3b82f6' },
+                'security': { code: '\uf3ed', color: '#ef4444' },
+                'routing': { code: '\uf233', color: '#374151' },
+                'switch_poe': { code: '\uf0e7', color: '#16a34a' },
                 'switch_unmanaged': { code: '\uf6ff', color: '#6366f1' },
-                'switching':        { code: '\uf0e7', color: '#16a34a' },
-                'wireless':         { code: '\uf1eb', color: '#14b8a6' },
-                'endpoints':        { code: '\uf108', color: '#9ca3af' }
+                'switching': { code: '\uf0e7', color: '#16a34a' },
+                'wireless': { code: '\uf1eb', color: '#14b8a6' },
+                'endpoints': { code: '\uf108', color: '#9ca3af' }
             };
             
             if (iconMappings[group]) {
@@ -573,9 +541,8 @@
                 };
             }
             
-            currentData.baseSize = size; // Save the base size for the hover effects
-            currentData.shape = 'icon'; 
-            
+            currentData.baseSize = size;
+            currentData.shape = 'icon';
             currentCallback(currentData);
             closeModals();
         }
@@ -589,23 +556,20 @@
             currentCallback = callback;
             currentData = data;
             document.getElementById('edge-modal-title').innerHTML = `<i class="fa-solid fa-link mr-2"></i>${title}`;
-            document.getElementById('edge-label').value = data.label || '';
+            document.getElementById('edge-label').value = data.label || 'LAN';
             document.getElementById('edge-modal').classList.remove('hidden');
         }
 
         function saveEdgeModal() {
             if (!currentData || !currentCallback) return;
-            
             const label = document.getElementById('edge-label').value;
             if (label) {
                 currentData.label = label;
                 currentData.font = { align: 'horizontal' };
             }
-            
             if (!currentData.color) {
                 currentData.color = { color: '#64748b' };
             }
-
             currentCallback(currentData);
             closeModals();
         }
@@ -625,11 +589,9 @@
         document.getElementById('import-csv').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(event) {
-                const csvData = event.target.result;
-                parseAndLoadCSV(csvData);
+                parseAndLoadCSV(event.target.result);
             };
             reader.readAsText(file);
             e.target.value = '';
@@ -638,14 +600,12 @@
         function parseAndLoadCSV(csvText) {
             try {
                 const lines = csvText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-                
                 let parsingMode = 'none';
                 const newNodes = [];
                 const newEdges = [];
 
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
-                    
                     if (line.toLowerCase().startsWith('nodes:')) {
                         parsingMode = 'nodes';
                         continue;
@@ -654,11 +614,9 @@
                         continue;
                     }
 
-                    if (parsingMode === 'none') {
-                         if (line.toLowerCase().includes('id') && line.toLowerCase().includes('label')) {
-                             parsingMode = 'nodes';
-                             continue;
-                         }
+                    if (parsingMode === 'none' && line.toLowerCase().includes('id') && line.toLowerCase().includes('label')) {
+                        parsingMode = 'nodes';
+                        continue;
                     }
                     
                     if (line.toLowerCase() === 'id,label,group' || line.toLowerCase() === 'from,to,label') continue;
@@ -682,7 +640,6 @@
                                 node.shape = 'dot';
                                 node.color = '#cbd5e1';
                             }
-                            
                             newNodes.push(node);
                         }
                     } else if (parsingMode === 'edges') {
@@ -707,9 +664,8 @@
                     network.fit();
                     showNotification("Data loaded successfully!");
                 } else {
-                    showNotification("No valid node data found in CSV. Please ensure correct format.", true);
+                    showNotification("No valid node data found in CSV.", true);
                 }
-                
             } catch (err) {
                 console.error("Error parsing CSV:", err);
                 showNotification("Failed to parse CSV file.", true);
@@ -721,7 +677,6 @@
              panel.className = `fixed top-4 right-4 p-4 rounded shadow-lg text-white font-bold z-50 transition-opacity duration-500 ${isError ? 'bg-red-500' : 'bg-green-500'}`;
              panel.textContent = message;
              document.body.appendChild(panel);
-             
              setTimeout(() => {
                  panel.style.opacity = '0';
                  setTimeout(() => panel.remove(), 500);
@@ -730,10 +685,8 @@
 
         function getHighResCanvas(callback) {
             showNotification("Generating high-quality export of your current view...");
-            
             const currentScale = network.getScale();
             const currentViewPosition = network.getViewPosition();
-            
             const exportScaleMultiplier = 3; 
             const targetWidth = container.clientWidth * exportScaleMultiplier;
             const targetHeight = container.clientHeight * exportScaleMultiplier;
@@ -748,7 +701,6 @@
 
             const currentPositions = network.getPositions();
             const clonedNodes = new vis.DataSet();
-            
             nodes.get().forEach(node => {
                 const clone = { ...node };
                 if (currentPositions[node.id]) {
@@ -760,14 +712,9 @@
             const clonedEdges = new vis.DataSet(edges.get());
 
             const exportOptions = Object.assign({}, options);
-            
-            // CRITICAL FIX: Disable hierarchical auto-layout in the export clone!
-            // This forces the clone to perfectly respect the exact X/Y coordinates we just copied, 
-            // preventing the nodes from scattering or disappearing during the high-res capture.
             exportOptions.layout = Object.assign({}, options.layout, { hierarchical: { enabled: false } });
             exportOptions.physics = { enabled: false }; 
             exportOptions.interaction = { dragNodes: false, zoomView: false, dragView: false };
-            exportOptions.manipulation = { enabled: false }; 
 
             const exportNetwork = new vis.Network(exportContainer, {
                 nodes: clonedNodes,
@@ -778,24 +725,20 @@
                 setTimeout(() => {
                     const canvas = exportContainer.querySelector('canvas');
                     const destCanvas = document.createElement('canvas');
-                    
                     if (canvas) {
                         destCanvas.width = canvas.width;
                         destCanvas.height = canvas.height;
                         const ctx = destCanvas.getContext('2d');
-                        
                         const width = destCanvas.width;
                         const height = destCanvas.height;
 
-                        // 1. Draw the Blue Gradient Background for Export
                         const gradient = ctx.createLinearGradient(0, 0, width, height);
-                        gradient.addColorStop(0, '#e0f2fe'); // Light sky blue
-                        gradient.addColorStop(0.5, '#bae6fd'); // Mid blue
-                        gradient.addColorStop(1, '#7dd3fc'); // Deeper sky blue
+                        gradient.addColorStop(0, '#e0f2fe');
+                        gradient.addColorStop(0.5, '#bae6fd');
+                        gradient.addColorStop(1, '#7dd3fc');
                         ctx.fillStyle = gradient;
                         ctx.fillRect(0, 0, width, height);
 
-                        // 2. Draw static network graphics scaled up for Export
                         const particles = [];
                         for (let i = 0; i < 150; i++) {
                             particles.push({
@@ -818,7 +761,6 @@
                                 const dy = particles[i].y - particles[j].y;
                                 const dist = Math.sqrt(dx * dx + dy * dy);
                                 const threshold = 160 * exportScaleMultiplier;
-                                
                                 if (dist < threshold) {
                                     ctx.beginPath();
                                     ctx.moveTo(particles[i].x, particles[i].y);
@@ -829,24 +771,19 @@
                             }
                         }
                         
-                        // Draw the actual Vis-Network Diagram over the generated background
                         ctx.drawImage(canvas, 0, 0);
 
                         const centerNameElem = document.getElementById('center-name-text');
                         if (centerNameElem && centerNameElem.innerText.trim() !== '') {
                             const centerName = centerNameElem.innerText.trim();
-                            
                             const fontSize = 32 * exportScaleMultiplier;
                             ctx.font = `900 ${fontSize}px Inter, sans-serif`; 
-                            
                             const xPos = 40 * exportScaleMultiplier;
                             const yPos = 80 * exportScaleMultiplier;
-                            
                             ctx.lineJoin = 'round';
                             ctx.lineWidth = 8 * exportScaleMultiplier;
                             ctx.strokeStyle = 'white';
                             ctx.strokeText(centerName, xPos, yPos);
-                            
                             ctx.fillStyle = '#111827'; 
                             ctx.fillText(centerName, xPos, yPos); 
                         }
@@ -854,9 +791,8 @@
 
                     exportNetwork.destroy();
                     document.body.removeChild(exportContainer);
-                    
                     callback(destCanvas.width > 0 ? destCanvas : null);
-                }, 1200); // Increased wait time slightly to guarantee all high-res FontAwesome icons fully render
+                }, 1200);
             });
 
             exportNetwork.moveTo({
@@ -867,11 +803,7 @@
 
         function exportImage() {
             getHighResCanvas(function(canvas) {
-                if (!canvas) {
-                    showNotification("Error: Could not generate image.", true);
-                    return;
-                }
-                
+                if (!canvas) return;
                 const imageURL = canvas.toDataURL('image/png');
                 const link = document.createElement('a');
                 link.href = imageURL;
@@ -879,45 +811,33 @@
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                
                 showNotification("High-quality image saved successfully!");
             });
         }
 
         function exportPDF() {
             getHighResCanvas(function(canvas) {
-                if (!canvas) {
-                    showNotification("Error: Could not generate document.", true);
-                    return;
-                }
-
+                if (!canvas) return;
                 try {
                     window.jsPDF = window.jspdf.jsPDF;
-                    
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
                     const pdf = new jsPDF({
                         orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
                         unit: 'px',
                         format: [canvas.width, canvas.height]
                     });
-
                     pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
                     pdf.save('Network_Architecture_HQ.pdf');
-                    
                     showNotification("High-quality PDF exported successfully!");
                 } catch (err) {
                     console.error("PDF Export Error: ", err);
-                    showNotification("Failed to create PDF. Check console for details.", true);
+                    showNotification("Failed to create PDF.", true);
                 }
             });
         }
         
-        // --- Project Import/Export (JSON) logic ---
-        
         function exportProject() {
             const currentPositions = network.getPositions();
-            
-            // Get all nodes and update them with exact current screen positions
             const projectNodes = nodes.get().map(node => {
                 if (currentPositions[node.id]) {
                     return { ...node, x: currentPositions[node.id].x, y: currentPositions[node.id].y };
@@ -944,20 +864,15 @@
         document.getElementById('import-project').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = function(event) {
                 try {
                     const data = JSON.parse(event.target.result);
                     if (data.nodes && data.edges) {
-                        
-                        // FIX: Switch automatically to manual layout FIRST so loaded positions are strictly respected
-                        // This prevents the hierarchical engine from temporarily scrambling the saved X/Y coordinates
                         const manualToggle = document.querySelector('input[value="manual"]');
                         if (manualToggle) manualToggle.checked = true;
                         changeLayout('manual');
                         
-                        // NOW load the nodes into the dataset
                         nodes.clear();
                         edges.clear();
                         nodes.add(data.nodes);
@@ -966,7 +881,6 @@
                         if (data.centerName) {
                             document.getElementById('center-name-text').innerText = data.centerName;
                         }
-                        
                         network.fit({ animation: true });
                         showNotification("Project loaded successfully!");
                     } else {
@@ -981,11 +895,9 @@
             e.target.value = ''; 
         });
 
-        // Initialize Static Network Background Graphic
         function initStaticBackground() {
             const canvas = document.getElementById('bg-canvas');
             if (!canvas) return;
-            
             const ctx = canvas.getContext('2d');
 
             function drawStaticNetwork() {
@@ -994,15 +906,13 @@
                 canvas.width = width;
                 canvas.height = height;
                 
-                // 1. Draw the Blue Gradient Background
                 const gradient = ctx.createLinearGradient(0, 0, width, height);
-                gradient.addColorStop(0, '#e0f2fe'); // Light sky blue
-                gradient.addColorStop(0.5, '#bae6fd'); // Mid blue
-                gradient.addColorStop(1, '#7dd3fc'); // Deeper sky blue
+                gradient.addColorStop(0, '#e0f2fe');
+                gradient.addColorStop(0.5, '#bae6fd');
+                gradient.addColorStop(1, '#7dd3fc');
                 ctx.fillStyle = gradient;
                 ctx.fillRect(0, 0, width, height);
 
-                // 2. Draw static network graphics (nodes and edges)
                 const particles = [];
                 for (let i = 0; i < 120; i++) {
                     particles.push({
@@ -1015,7 +925,7 @@
                 particles.forEach(p => {
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // White nodes for contrast
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                     ctx.fill();
                 });
 
@@ -1024,7 +934,6 @@
                         const dx = particles[i].x - particles[j].x;
                         const dy = particles[i].y - particles[j].y;
                         const dist = Math.sqrt(dx * dx + dy * dy);
-                        
                         if (dist < 160) {
                             ctx.beginPath();
                             ctx.moveTo(particles[i].x, particles[i].y);
@@ -1040,7 +949,6 @@
             window.addEventListener('resize', drawStaticNetwork);
         }
         
-        // Start the background graphic
         initStaticBackground();
     </script>
 </body>
